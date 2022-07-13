@@ -1,13 +1,14 @@
-"""Extracting Content-Aware Perceptual Features using Pre-Trained ResNet-50"""
-# Author: Dingquan Li
-# Email: dingquanli AT pku DOT edu DOT cn
-# Date: 2018/3/27
-#
-# CUDA_VISIBLE_DEVICES=0 python CNNfeatures.py --database=KoNViD-1k --frame_batch_size=64
-# CUDA_VISIBLE_DEVICES=1 python CNNfeatures.py --database=CVD2014 --frame_batch_size=32
-# CUDA_VISIBLE_DEVICES=0 python CNNfeatures.py --database=LIVE-Qualcomm --frame_batch_size=8
+"""Extracting Content-Aware Perceptual Features using Pre-Trained backbone from LinearityIQA"""
 
-from re import X
+
+# Feature extraction for KoNViD-1k dataset
+# 1. Set the path to the source videos in each dataset. 
+# 2. Set the path to save the extracted features.
+# 3. Set the path to csv file of each dataset, which contains all the video names and MOSs.
+# 4. You can also set other parameters according to your computing resource, such as the frame_batch_size and num_processes.
+
+
+from re import X, sub
 from numpy.core.arrayprint import printoptions
 from numpy.core.fromnumeric import shape
 from numpy.lib.function_base import extract
@@ -25,9 +26,9 @@ import argparse
 from pathlib import Path
 import torch.nn.functional as F
 
-os.environ['CUDA_VISIBLE_DEVICES']='0'
+os.environ['CUDA_VISIBLE_DEVICES']='2'
 
-class VideoDataset(Dataset):
+class VideoFrameDataset(Dataset):
     """
     Test or Validation
     """
@@ -68,7 +69,59 @@ class VideoDataset(Dataset):
     def __len__(self):
         return len(self.video_names)
 
+class VideoDataset(Dataset):
+    """Read data from the original dataset for feature extraction"""
+    def __init__(self, videos_dir, video_names, score, video_format='RGB', width=None, height=None):
 
+        super(VideoDataset, self).__init__()
+        self.videos_dir = videos_dir
+        self.video_names = video_names
+        self.score = score
+        self.format = video_format
+        self.width = width
+        self.height = height
+
+    def __len__(self):
+        return len(self.video_names)
+
+    def __getitem__(self, idx):
+        video_name = self.video_names[idx]
+        # video_dir = self.videos_dir[idx]
+        
+        assert self.format == 'YUV420' or self.format == 'RGB'
+        if self.format == 'YUV420':
+            video_data = skvideo.io.vread(os.path.join(self.videos_dir, video_name+'.yuv'), self.height, self.width, inputdict={'-pix_fmt':'yuvj420p'})
+        else:
+            video_data = skvideo.io.vread(os.path.join(self.videos_dir, video_name+'.mp4'))
+        video_score = self.score[idx]
+
+        transform = transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+        ])
+
+        video_length = video_data.shape[0]
+        video_channel = video_data.shape[3]
+        video_height = video_data.shape[1]
+        video_width = video_data.shape[2]
+        # print('video_width: {} video_height: {}'.format(video_width, video_height))
+        transformed_video = torch.zeros([video_length, video_channel,  video_height, video_width])
+        # transformed_video = []
+        for frame_idx in range(video_length):
+            # print(frame_idx)
+            frame = video_data[frame_idx]
+            frame = Image.fromarray(frame)
+            # frame.show()
+            frame = transform(frame)
+            # transformed_video.append(frame)
+            transformed_video[frame_idx] = frame
+        # transformed_data = torch.zeros([video_length, *frames[0].shape])
+        # for i in range(len_video):
+        #     transformed_data[i] = frames[i]
+        # sample = {'video': transformed_video,
+        #           'score': video_score}
+
+        return video_name, transformed_video, video_score
 
 def local_mean_std_pool2d(x):
     mean_x = nn.functional.avg_pool2d(x, kernel_size=3, padding=1, stride=1)
@@ -244,7 +297,7 @@ def get_features(video_data, frame_batch_size=16, device='cuda'):
         r4_mu_std = torch.cat((r4_mu_std, r4['mu_std_4']), 0)
        
         
-        mu_std = torch.cat((r1_mu_std.squeeze(), r2_mu_std.squeeze(), r3_mu_std.squeeze(), r4_mu_std.squeeze()), 1)
+        mu_std = torch.cat((r1_mu_std.squeeze(2).squeeze(2), r2_mu_std.squeeze(2).squeeze(2), r3_mu_std.squeeze(2).squeeze(2), r4_mu_std.squeeze(2).squeeze(2)), 1)
 
     
     return mu_std
@@ -255,9 +308,10 @@ def main(dataset, features_folder):
     '''
     
     for i in range(len(dataset)):
-        video_name, current_data = dataset[i]
-        print('Video {}: video name {}: length {}'.format(i, video_name, len(current_data)))
-        feature_path = os.path.join(features_folder, str(video_name)) + '.npy'
+        video_name, current_data, _ = dataset[i]
+        print('Video {}: video name {}: length {}'.format(i, video_name, current_data.shape[0]))
+        saved_name = os.path.join(features_folder, video_name)
+        feature_path = saved_name + '.npy'
         if os.path.isfile(feature_path):
             continue
 
@@ -271,26 +325,30 @@ if __name__ == "__main__":
     # import fire
     # fire.Fire()
 
-    features_folder = r'/home/zhw/vqa/dataset/KoNViD_1k/feature/VSFA_resnetxt101_iqapretrain_ms'
-    video_folder = r'/home/zhw/vqa/dataset/KoNViD_1k/frames'
-    csv_file = Path('/home/zhw/vqa/code/VQA-framework/feature/data/KoNViD_1k/KoNViD_1k.csv')
+    features_folder = r'/home/zhw/vqa/code/VQA-code_clean//feature/KoNViD_1k/Resnetxt101_iqapretrain_ms' #path to save the extracted features
+    video_folder = r'/home/zhw/vqa/dataset/KoNViD_1k/KoNViD_1k_videos' #path to the videos
+    csv_file = Path('/home/zhw/vqa/code/VQA-code_clean/feature/data/KoNViD_1k/KoNViD_1k.csv') #patch to the csv files, and we give the csv file in /fature/data
     video_info = pd.read_csv(csv_file, header=0)
-    video_names = video_info.iloc[:, 0].tolist()
+    video_names_ = video_info.iloc[:, 0].tolist()
+    video_names = [str(name) for name in video_names_]
+    # sub_video_names = sub_video_names[:len(sub_video_names)//2]
     video_moses = video_info.iloc[:, 1].tolist()
-    # df_info = pd.read_csv(database_info_path)
-    # video_names = df_info['video_name'].values
+    # video_moses = video_moses[:len(video_moses)//2]
+    # video_names = os.listdir(video_root)
+    
 
     if not os.path.exists(features_folder):
         os.makedirs(features_folder)
 
     mp.set_start_method('spawn')
-    num_processes = 4
+    num_processes = 1
     processes = []
     nvideo_per_node = int(len(video_names) / num_processes)
     # nvideo_per_node = 1
     for rank in range(num_processes):
         video_names_ = video_names[rank*nvideo_per_node:(rank+1)*nvideo_per_node]
-        dataset = VideoDataset(video_names_, video_folder)
+        video_mos_ = video_moses[rank*nvideo_per_node:(rank+1)*nvideo_per_node]
+        dataset = VideoDataset(video_folder, video_names_, video_mos_)
         p = mp.Process(target=main, args=(dataset, features_folder))
         p.start()
         processes.append(p)

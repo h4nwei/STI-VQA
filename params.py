@@ -68,8 +68,8 @@ parser.add_argument('--batch_size', type=int, default=8, help='input batch size 
 parser.add_argument('--test_batch', type=int, default=1, help='input batch size for test')
 
 # Testing specifications
-#parser.add_argument('--test_only', action='store_true', help='set this option to test the model')
-parser.add_argument('--test_only', default=False, help='set this option to test the model')
+parser.add_argument('--test_only', action='store_true', help='set this option to test the model')
+#parser.add_argument('--test_only', default=False, help='set this option to test the model')
 parser.add_argument('--pre_train', type=str, default='/home/zhw/vqa/code/VQA-framework/ckpts/vit/LSVQ/1/best_val.pth', help='where saved trained checkpoints')
 parser.add_argument('--predict_res', type=str, default=None, help='where to save predicted results')
 
