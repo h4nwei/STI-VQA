@@ -5,14 +5,11 @@ import json
 import torch
 from torch.utils.data import DataLoader
 import os
-# from params_pugc import args
 from params import args
-from dataset import DeepFeatDatabase, FrameDatabase, DeepFeatDataset, DeepMSFeatDataset, FrFrameDatabase
+from dataset import  DeepFeatDataset
 from loss import Loss 
-# from train_single_stage import Trainer
-from train_new import Trainer
+from train import Trainer
 from evaluator import Evaluator
-# from evaluate_single import Evaluator
 
 os.environ['CUDA_VISIBLE_DEVICES']='4'
 
@@ -25,32 +22,15 @@ random.seed(args.seed)
 
 def main():
     if not args.test_only:
-        # Train and valid model
-        # args.log_dir.mkdir(parents=True, exist_ok=True)
-        # args.ckpt_dir.mkdir(parents=True, exist_ok=True)
         with open(os.path.join(args.log_dir, 'args.txt'), 'w') as f:
             json_dict = {k:str(v) for k, v in args.__dict__.items()}
             json.dump(json_dict, f, indent=4)
 
-        if args.model == 'vsfa':    
-            from network.vsfa_new import VSFA_new
-            # from network.vsfa import VSFA
-            ds_train = DeepMSFeatDataset(args, phase='train')
-            ds_val = DeepMSFeatDataset(args, phase='val')
-            ds_test = DeepMSFeatDataset(args, phase='test')
-            model = VSFA_new(input_size=args.input_size//2, 
-                    reduced_size=args.reduced_size, 
-                    hidden_size=args.hidden_size)
-        elif args.model == 'vit':
-            # from network.baseline import ViT
-            from network.vit_multi_stage import ViT
-            # from network.vit_single_stage import ViT
-            # from network.vit_momuntant import ViT
-            # from network.vit_spatial import ViT
+        if args.model == 'sti-vqa':
+            from network.sti_vqa import STI_VQA
             ds_train = DeepFeatDataset(args, phase='train')
             ds_val = DeepFeatDataset(args, phase='test')
-            # ds_test = DeepFeatDataset(args, phase='test')
-            model = ViT(input_dim=args.d_feat,
+            model = STI_VQA(input_dim=args.d_feat,
                     mlp_dim=args.mlp_dim, 
                     dim_head=args.dim_head,
                     output_channel=args.output_channel, 
@@ -83,19 +63,10 @@ def main():
     if not args.pre_train:
         raise ValueError("A pre-trained model is needed!")
 
-    if args.model == 'vsfa':
-        from network.vsfa_new import VSFA_new
-        ds_test = DeepMSFeatDataset(args, phase='test')
-        model = VSFA_new(input_size=args.input_size//2, 
-                reduced_size=args.reduced_size, 
-                hidden_size=args.hidden_size)
-    elif args.model == 'vit':
-        # from network.ViT_difference import ViT
-        from network.vit_multi_stage import ViT
-        # from network.vit_single_stage import ViT
-        # from network.vit_spatial import ViT
+    if args.model == 'vit':
+        from network.sti_vqa import STI_VQA
         ds_test = DeepFeatDataset(args, phase='test')
-        model = ViT(input_dim=args.d_feat,
+        model = STI_VQA(input_dim=args.d_feat,
                     mlp_dim=args.mlp_dim, 
                     dim_head=args.dim_head,
                     output_channel=args.output_channel, 

@@ -194,7 +194,7 @@ def feature_difference(features):
     
     return torch.cat([diff_mean, diff_std], 2)
 
-class ViT(nn.Module):
+class STI_VQA(nn.Module):
     def __init__(self, *, input_dim=4096, mlp_dim=128, dim_head=64, output_channel=1, depth=5, heads=6, pool = 'reg', dropout = 0.1, emb_dropout = 0.1, max_length=1000):
         super().__init__()
         
@@ -307,21 +307,4 @@ class ViT(nn.Module):
 
         return x0, x1, x2, x3
 
-def test_VQATransformer():
 
-    X = [torch.randn(2,10,8).cuda(), torch.randn(2,10,16).cuda(), torch.randn(2,10,32).cuda(), torch.randn(2,10,64).cuda()]
-    # X = torch.tensor([[[1, 1], [1, 0], [0, 0]], [[2, 1], [1, 1], [3, 0]]], dtype=torch.float32)
-    video_len = torch.zeros([2, 1]).cuda()
-    video_len[0, 0] = 5
-    video_len[1, 0] = 8
-    vqa = ViT(input_dim=64, mlp_dim=4, dim_head=2, output_channel=1, depth=2, heads=2, pool = 'reg', dropout = 0.1, emb_dropout = 0.1, max_length=10).cuda()
-    outputs = vqa(X, video_len, 10)
-    print(outputs)
-    print(outputs.shape)
-
-if __name__ == '__main__':
-    torch.manual_seed(1995)
-    torch.backends.cudnn.deterministic = True
-    torch.backends.cudnn.benchmark = False
-    torch.utils.backcompat.broadcast_warning.enabled = True
-    test_VQATransformer()

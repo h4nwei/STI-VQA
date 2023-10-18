@@ -27,10 +27,6 @@ class Trainer:
         self.data_info_split_idx = args.data_info_split_idx
         self.ckpt_dir = args.ckpt_dir
         self.max_len = args.max_len
-        # train_model_name = './checkpoints/train.pth'
-        # self.train_model_name = os.path.join(args.ckpt_dir, 'train') + '_{}.pth'.format(args.data_info_split_idx)
-        # best_val_model_name = './checkpoints/best_val.pth'
-        # self.best_val_model_name = os.path.join(args.ckpt_dir, 'best_val') + '_{}.pth'.format(args.data_info_split_idx)
     
 
     def main_worker(self):        

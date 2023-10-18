@@ -13,7 +13,7 @@ The release codes were implemented and have been tested in Ubuntu 18.04 with
 - torchvision = 0.9.0 
 
 ## Feature extraction
-More details can be found in README.md in the folder of `feature`.
+More details can be found in README.md in the folder of `extract_features`.
 
 ## Training on VQA Databases
 You can change the paramers in `param.py` to train each dataset with intra-/cross-dataset settings:
